@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Page Annotator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  </head>
+  <body>
+    <div id="app">
+      <div id="viewer-container">
+        <iframe id="page-frame" title="Document preview"></iframe>
+        <div id="viewer-overlay" class="hidden"></div>
+        <div id="detached-placeholder" class="hidden">
+          <p>The current entry is shown in a separate browser window.</p>
+          <button id="reopen-detached" type="button">Open viewer window</button>
+        </div>
+      </div>
+      <div id="annotation-panel">
+        <div
+          id="panel-resizer"
+          class="hidden"
+          role="separator"
+          aria-orientation="horizontal"
+          aria-label="Resize annotation panel"
+        ></div>
+        <div id="panel-header">
+          <div class="header-left">
+            <strong id="entry-counter">Entry 0 / 0</strong>
+            <span id="status-message"></span>
+            <span id="proxy-indicator" class="badge hidden">Proxy mode</span>
+            <span id="entry-annotator" class="badge muted hidden"></span>
+          </div>
+          <div class="controls">
+            <span id="annotator-display" class="badge secondary hidden"></span>
+            <button id="change-annotator" type="button" class="ghost">Change annotator</button>
+            <button id="open-original" type="button">Open original</button>
+            <button id="toggle-proxy" type="button">Use proxy</button>
+            <button id="save-entry" type="button">Save</button>
+            <button id="prev-entry" type="button">&#9664; Prev</button>
+            <button id="next-entry" type="button">Next &#9654;</button>
+          </div>
+        </div>
+        <div id="panel-content">
+          <section id="document-info">
+            <h2>Document info</h2>
+            <div id="info-fields"></div>
+          </section>
+          <section id="annotation-section">
+            <h2>Annotate</h2>
+            <form id="annotation-form"></form>
+          </section>
+        </div>
+      </div>
+    </div>
+    <div id="annotator-modal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-content">
+        <form id="annotator-form">
+          <h2>Who is annotating?</h2>
+          <p>Enter your name so we can resume your progress next time.</p>
+          <label for="annotator-input">Annotator name</label>
+          <input id="annotator-input" name="annotator" type="text" required />
+          <div class="modal-actions">
+            <button type="submit">Start annotating</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+  </body>
+</html>

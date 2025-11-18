@@ -1,0 +1,73 @@
+# Application configuration for the page annotator
+
+data_file: data/sample_documents.csv
+annotation_output: data/sample_annotations.csv
+annotator_column: annotator
+
+viewer:
+  url_column: url
+  prefer_proxy: false
+  allow_proxy_toggle: true
+  open_original_in_new_tab: true
+  auto_proxy_on_block: true
+  detached_window: false
+
+# Autosave controls
+autosave:
+  enabled: true
+  interval_seconds: 8
+
+# Fields taken from the CSV that will be shown in the info panel.
+display_fields:
+  - column: title
+    label: Title
+    type: text
+  - column: authors
+    label: Authors
+    type: list
+    separator: ";"
+  - column: summary
+    label: Summary
+    type: textarea
+  - column: tags
+    label: Tags
+    type: list
+    separator: ";"
+
+# Fields that the annotator must provide for each page.
+annotation_fields:
+  - name: relevance
+    label: Relevance
+    type: select
+    options:
+      - High
+      - Medium
+      - Low
+    required: true
+  - name: accurate
+    label: Appears accurate?
+    type: checkbox
+  - name: notes
+    label: Notes
+    type: textarea
+    placeholder: "Use this space for anything notable."
+  - name: flagged_topics
+    label: Flagged Topics
+    type: list
+    separator: ";"
+    placeholder: "topic1;topic2"
+  - name: share_status
+    label: Share with team?
+    type: select
+    options:
+      - "Undecided"
+      - "Share"
+      - "Do not share"
+    default: "Undecided"
+
+# Optional default separator for list annotations if not explicitly provided.
+default_list_separator: ";"
+
+panel:
+  initial_height: 360
+  resizable: true

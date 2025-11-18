@@ -1,0 +1,45 @@
+# Basic news-style annotation config
+
+data_file: data/sample_documents.csv
+annotation_output: data/sample_annotations.csv
+annotator_column: annotator
+
+viewer:
+  url_column: url
+  prefer_proxy: false
+  auto_proxy_on_block: true
+
+autosave:
+  enabled: true
+  interval_seconds: 10
+
+display_fields:
+  - column: title
+    label: Title
+    type: text
+  - column: authors
+    label: Authors
+    type: list
+    separator: ";"
+  - column: summary
+    label: Summary
+    type: textarea
+
+annotation_fields:
+  - name: relevance
+    label: Relevance
+    type: select
+    options: [High, Medium, Low]
+    required: true
+  - name: notes
+    label: Notes
+    type: textarea
+    placeholder: "Key facts, quotes, etc."
+  - name: flagged_topics
+    label: Flagged topics
+    type: list
+    separator: ";"
+
+panel:
+  initial_height: 360
+  resizable: true

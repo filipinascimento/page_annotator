@@ -1,0 +1,7 @@
+{
+  "manifest_version": 3,
+  "name": "Page Annotator Helper",
+  "version": "1.0",
+  "description": "Launches a lightweight browser window for the page annotator application.",
+  "permissions": ["tabs"]
+}

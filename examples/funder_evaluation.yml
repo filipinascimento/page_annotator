@@ -1,0 +1,54 @@
+# Annotation config tailored for funder evaluation tasks.
+
+data_file: ../data/funder_evaluation.csv
+annotation_output: ../data/funder_evaluation_annotations.csv
+annotator_column: evaluator
+
+viewer:
+  url_column: DOI
+  prefer_proxy: false
+  auto_proxy_on_block: false
+  allow_proxy_toggle: true
+  open_original_in_new_tab: true
+
+autosave:
+  enabled: true
+  interval_seconds: 5
+
+display_fields:
+  - column: UT
+    label: UT Identifier
+    type: text
+  - column: title
+    label: Article title
+    type: textarea
+  - column: display_names
+    label: Display names (scroll)
+    type: scroll_list
+    separator: "||"
+  - column: OA_URLs
+    label: OA funder URLs
+    type: link_list
+    separator: "||"
+
+annotation_fields:
+  - name: total_funders
+    label: Total Funders
+    type: number
+    required: true
+  - name: correct_matches
+    label: Correct Matches
+    type: number
+    required: true
+  - name: wrong_matches
+    label: Wrong Matches
+    type: number
+    required: true
+  - name: notes
+    label: Notes
+    type: textarea
+    placeholder: "Optional comments"
+
+panel:
+  initial_height: 400
+  resizable: true

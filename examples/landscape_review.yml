@@ -1,0 +1,48 @@
+# Example focused on landscape review scoring
+
+data_file: data/sample_documents.csv
+annotation_output: data/landscape_annotations.csv
+annotator_column: reviewer
+
+viewer:
+  url_column: url
+  prefer_proxy: true
+  auto_proxy_on_block: true
+  allow_proxy_toggle: true
+
+autosave:
+  enabled: true
+  interval_seconds: 6
+
+display_fields:
+  - column: title
+    label: Work Title
+    type: text
+  - column: summary
+    label: Abstract snapshot
+    type: textarea
+  - column: tags
+    label: Keywords
+    type: list
+    separator: ";"
+
+annotation_fields:
+  - name: novelty_score
+    label: Novelty (1-5)
+    type: number
+    required: true
+  - name: risk_score
+    label: Risk (1-5)
+    type: number
+    required: true
+  - name: include_in_report
+    label: Include in report?
+    type: select
+    options: [Yes, Maybe, No]
+  - name: summary_notes
+    label: Analyst notes
+    type: textarea
+
+panel:
+  initial_height: 380
+  resizable: true
