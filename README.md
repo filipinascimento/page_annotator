@@ -126,6 +126,15 @@ python pywebview_launcher.py --config config.yaml
 
 You can tweak window sizes and positions (see `python pywebview_launcher.py --help` for options). The launcher forces `viewer.detached_window: true` so the built-in iframe is hidden and the annotation UI sends page changes to the PyWebView viewer. This approach works on macOS, Windows, and Linux as long as the platform-specific PyWebView backend is available (QtWebEngine on Linux/Windows, WKWebView on macOS).
 
+### Optional: use Playwright to drive the page viewer
+If you prefer a Chromium surface with full developer tools and relaxed security flags, install Playwright’s browser once (`playwright install chromium`) and use the bundled launcher:
+
+```bash
+page-annotator-playwright --config config.yaml
+```
+
+This command starts the Flask backend, launches Chromium for the top viewer panel, and opens the existing annotation UI in PyWebView beneath it. A lightweight bridge lets the annotation pane steer the viewer (prev/next, proxy toggles, find-in-page, etc.). Pass `--chromium-path` to reuse an existing Chrome build or `--extra-browser-arg` to forward custom flags like `--proxy-server=…`.
+
 The annotation CSV specified in the config is rewritten every time you save so you can resume later with your previous answers already filled in.
 
 ## Handling pages that refuse `iframe`s

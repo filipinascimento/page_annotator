@@ -14,12 +14,14 @@ dependencies = [
   "PyYAML==6.0.1",
   "requests==2.31.0",
   "beautifulsoup4==4.12.3",
-  "pywebview==6.1"
+  "pywebview==6.1",
+  "playwright==1.56.0"
 ]
 
 [project.scripts]
 page-annotator = "page_annotator.cli:main"
 page-annotator-pywebview = "page_annotator.pywebview_cli:main"
+page-annotator-playwright = "page_annotator.playwright_cli:main"
 
 [tool.setuptools.packages.find]
 include = ["page_annotator"]
