@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>PDF Viewer</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+        background: #0f172a;
+        color: #f8fafc;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+      }
+      header {
+        padding: 0.5rem 1rem;
+        background: #111827;
+        border-bottom: 1px solid rgba(94, 96, 110, 0.4);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+      }
+      header span {
+        font-size: 0.9rem;
+        opacity: 0.85;
+      }
+      header a {
+        background: #2563eb;
+        color: #fff;
+        padding: 0.35rem 0.8rem;
+        border-radius: 6px;
+        text-decoration: none;
+        font-weight: 600;
+      }
+      iframe {
+        flex: 1;
+        border: none;
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <span>PDF preview</span>
+      <a href="{{ original_url }}" target="_blank" rel="noopener">Download original</a>
+    </header>
+    <iframe src="{{ pdf_src }}" title="PDF document"></iframe>
+  </body>
+</html>

@@ -23,6 +23,11 @@ const state = {
   hasUnsavedChanges: false,
   entryProxyPrefs: {},
   viewerWindow: null,
+  pywebviewDetected: typeof window !== "undefined" && typeof window.pywebview !== "undefined",
+  pywebviewReady: false,
+  pendingViewerPayload: null,
+  fullPanelMode: false,
+  lastSearchQuery: "",
 };
 
 const dom = {};
@@ -30,9 +35,85 @@ const STORAGE_KEYS = {
   annotator: "pageAnnotatorName",
 };
 
+function getAppOrigin() {
+  if (window.location.origin) {
+    return window.location.origin;
+  }
+  return `${window.location.protocol}//${window.location.host}`;
+}
+
+function makeAbsoluteUrl(path) {
+  if (!path) return "";
+  if (/^https?:/i.test(path)) {
+    return path;
+  }
+  if (path.startsWith("/")) {
+    return `${getAppOrigin()}${path}`;
+  }
+  return `${getAppOrigin()}/${path}`;
+}
+
+function isLikelyPdfUrl(url) {
+  if (!url) return false;
+  const normalized = url.split("?")[0].toLowerCase();
+  return normalized.endsWith(".pdf");
+}
+
+function isPyWebViewEnvironment() {
+  if (state.pywebviewDetected) return true;
+  if (typeof window !== "undefined" && typeof window.pywebview !== "undefined") {
+    state.pywebviewDetected = true;
+    return true;
+  }
+  return false;
+}
+
+function isPyWebViewBridgeReady() {
+  return (
+    state.pywebviewReady &&
+    window.pywebview &&
+    window.pywebview.api &&
+    typeof window.pywebview.api.show_entry === "function"
+  );
+}
+
+function shouldUsePyWebViewBridge() {
+  return Boolean(state.config?.viewer?.detached_window) && isPyWebViewEnvironment();
+}
+
+function queuePyWebViewPayload(payload) {
+  state.pendingViewerPayload = payload;
+  flushPendingPyWebViewPayload();
+}
+
+function flushPendingPyWebViewPayload() {
+  if (!state.pendingViewerPayload) return;
+  if (!isPyWebViewBridgeReady()) return;
+  const payload = state.pendingViewerPayload;
+  state.pendingViewerPayload = null;
+  window.pywebview.api
+    .show_entry(payload)
+    .catch((err) => {
+      console.debug("pywebview bridge failed", err);
+      state.pendingViewerPayload = payload;
+    });
+}
+
+function maybeEnableFullPanelMode() {
+  if (state.fullPanelMode) return;
+  if (!state.config?.viewer?.detached_window) return;
+  if (!isPyWebViewEnvironment()) return;
+  state.fullPanelMode = true;
+  document.body?.classList.add("pywebview-mode");
+  dom.resizer?.classList.add("hidden");
+  applyPanelHeight(window.innerHeight || state.panelHeight);
+  configureViewerControls();
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   cacheDom();
   attachEvents();
+  initializePyWebViewBridge();
   bootstrap();
 });
 
@@ -57,6 +138,9 @@ function cacheDom() {
   dom.annotatorInput = document.getElementById("annotator-input");
   dom.detachedPlaceholder = document.getElementById("detached-placeholder");
   dom.reopenDetached = document.getElementById("reopen-detached");
+  dom.viewerControls = document.getElementById("viewer-controls");
+  dom.viewerBack = document.getElementById("viewer-back");
+  dom.viewerForward = document.getElementById("viewer-forward");
 }
 
 function attachEvents() {
@@ -80,11 +164,37 @@ function attachEvents() {
   if (dom.reopenDetached) {
     dom.reopenDetached.addEventListener("click", reopenDetachedViewer);
   }
+  if (dom.viewerBack) {
+    dom.viewerBack.addEventListener("click", viewerBack);
+  }
+  if (dom.viewerForward) {
+    dom.viewerForward.addEventListener("click", viewerForward);
+  }
+  document.addEventListener("click", handleViewerLinkClicks);
+  setupKeyboardShortcuts();
   window.addEventListener("beforeunload", () => {
     if (state.viewerWindow && !state.viewerWindow.closed) {
       state.viewerWindow.close();
     }
   });
+  window.addEventListener("resize", () => {
+    if (state.fullPanelMode) {
+      applyPanelHeight(window.innerHeight || state.panelHeight);
+    }
+  });
+}
+
+function initializePyWebViewBridge() {
+  const handleReady = () => {
+    if (state.pywebviewReady) return;
+    state.pywebviewReady = true;
+    state.pywebviewDetected = true;
+    maybeEnableFullPanelMode();
+    configureViewerControls();
+    flushPendingPyWebViewPayload();
+  };
+  window.addEventListener("pywebviewready", handleReady);
+  document.addEventListener("pywebviewready", handleReady);
 }
 
 async function bootstrap() {
@@ -100,11 +210,13 @@ async function bootstrap() {
     state.annotators = payload.annotators || {};
     state.useProxy = Boolean(state.config.viewer?.prefer_proxy);
     state.annotatorColumn = state.config.annotatorColumn || null;
+    maybeEnableFullPanelMode();
     configurePanel();
     configureProxyControls();
     configureAutoSave();
     configureAnnotatorControls();
     configureViewerContainer();
+    configureViewerControls();
     if (!state.entries.length) {
       dom.counter.textContent = "No entries";
       setStatus("The dataset is empty.");
@@ -123,6 +235,11 @@ async function bootstrap() {
 
 function configurePanel() {
   const panel = state.config.panel || {};
+  if (state.fullPanelMode) {
+    dom.resizer?.classList.add("hidden");
+    applyPanelHeight(window.innerHeight || state.panelHeight);
+    return;
+  }
   const initialHeight = Number(panel.initial_height) || state.panelHeight;
   state.panelHeight = initialHeight;
   state.resizeStartHeight = initialHeight;
@@ -165,6 +282,11 @@ function configureAnnotatorControls() {
   }
 }
 
+function configureViewerControls() {
+  const enabled = state.fullPanelMode && shouldUsePyWebViewBridge();
+  dom.viewerControls?.classList.toggle("hidden", !enabled);
+}
+
 function configureViewerContainer() {
   const detached = state.config.viewer?.detached_window;
   if (!detached) {
@@ -177,7 +299,8 @@ function configureViewerContainer() {
 }
 
 function applyPanelHeight(height) {
-  const normalized = Math.max(150, Math.round(height));
+  const sourceHeight = typeof height === "number" && !Number.isNaN(height) ? height : state.panelHeight;
+  const normalized = Math.max(150, Math.round(state.fullPanelMode ? window.innerHeight || sourceHeight : sourceHeight));
   document.documentElement.style.setProperty("--panel-height", `${normalized}px`);
   state.panelHeight = normalized;
 }
@@ -498,8 +621,16 @@ function renderLinkList(container, rawValue, field) {
     const anchor = document.createElement("a");
     anchor.href = trimmed;
     anchor.textContent = trimmed;
-    anchor.target = "_blank";
     anchor.rel = "noopener noreferrer";
+    if (state.fullPanelMode && shouldUsePyWebViewBridge()) {
+      anchor.dataset.viewerLink = "true";
+      anchor.target = "_self";
+      if (isLikelyPdfUrl(trimmed)) {
+        anchor.dataset.pdfLink = "true";
+      }
+    } else {
+      anchor.target = "_blank";
+    }
     li.appendChild(anchor);
     ul.appendChild(li);
   });
@@ -586,6 +717,38 @@ function openOriginal() {
   const entry = state.entries[state.currentIndex];
   if (entry && entry.url) {
     window.open(entry.url, "_blank");
+  }
+}
+
+function viewerBack() {
+  if (!shouldUsePyWebViewBridge() || !isPyWebViewBridgeReady()) {
+    return;
+  }
+  const api = window.pywebview?.api;
+  if (!api || typeof api.browser_back !== "function") return;
+  try {
+    const result = api.browser_back();
+    if (result && typeof result.catch === "function") {
+      result.catch((err) => console.debug("pywebview back failed", err));
+    }
+  } catch (err) {
+    console.debug("pywebview back failed", err);
+  }
+}
+
+function viewerForward() {
+  if (!shouldUsePyWebViewBridge() || !isPyWebViewBridgeReady()) {
+    return;
+  }
+  const api = window.pywebview?.api;
+  if (!api || typeof api.browser_forward !== "function") return;
+  try {
+    const result = api.browser_forward();
+    if (result && typeof result.catch === "function") {
+      result.catch((err) => console.debug("pywebview forward failed", err));
+    }
+  } catch (err) {
+    console.debug("pywebview forward failed", err);
   }
 }
 
@@ -820,6 +983,19 @@ function openDetachedWindow(entry) {
   const target = state.useProxy ? `/api/proxy/${entry.id}` : entry.url;
   if (!target) return;
   const windowName = "annotator-detached-viewer";
+  if (shouldUsePyWebViewBridge()) {
+    const absoluteTarget = state.useProxy ? makeAbsoluteUrl(`/api/proxy/${entry.id}`) : entry.url;
+    const payload = {
+      id: entry.id,
+      url: absoluteTarget,
+      proxyUrl: makeAbsoluteUrl(`/api/proxy/${entry.id}`),
+      originalUrl: entry.url,
+      useProxy: state.useProxy,
+      title: entry.data?.title || entry.url || `Entry ${entry.id}`,
+    };
+    queuePyWebViewPayload(payload);
+    return;
+  }
   try {
     if (!state.viewerWindow || state.viewerWindow.closed) {
       state.viewerWindow = window.open(target, windowName);
@@ -836,6 +1012,108 @@ function reopenDetachedViewer() {
   const entry = state.entries[state.currentIndex];
   if (entry) {
     openDetachedWindow(entry);
+  }
+}
+
+function handleViewerLinkClicks(evt) {
+  if (!state.fullPanelMode || !shouldUsePyWebViewBridge()) {
+    return;
+  }
+  const anchor = evt.target.closest("a[data-viewer-link='true']");
+  if (!anchor) return;
+  const url = anchor.href || anchor.dataset.url;
+  if (!url) return;
+  evt.preventDefault();
+  const label = anchor.dataset.title || anchor.textContent?.trim() || url;
+  openLinkInViewer(url, label);
+}
+
+function openLinkInViewer(url, title) {
+  if (!url) return;
+  if (!shouldUsePyWebViewBridge()) {
+    window.open(url, "_blank");
+    return;
+  }
+  if (isLikelyPdfUrl(url)) {
+    openPdfExternally(url);
+    return;
+  }
+  queuePyWebViewPayload({
+    id: `link-${Date.now()}`,
+    url,
+    proxyUrl: url,
+    originalUrl: url,
+    useProxy: false,
+    title: title || url,
+  });
+}
+
+function openPdfExternally(url) {
+  if (!url) return;
+  if (!isPyWebViewBridgeReady()) {
+    window.open(url, "_blank");
+    return;
+  }
+  const api = window.pywebview?.api;
+  if (!api || typeof api.open_external !== "function") {
+    window.open(url, "_blank");
+    return;
+  }
+  try {
+    const result = api.open_external(url);
+    if (result && typeof result.catch === "function") {
+      result.catch((err) => {
+        console.debug("open_external failed", err);
+        window.open(url, "_blank");
+      });
+    }
+  } catch (err) {
+    console.debug("open_external failed", err);
+    window.open(url, "_blank");
+  }
+}
+
+function setupKeyboardShortcuts() {
+  document.addEventListener("keydown", (evt) => {
+    if (!shouldUsePyWebViewBridge()) return;
+    const modifier = evt.metaKey || evt.ctrlKey;
+    if (!modifier) return;
+    const key = (evt.key || "").toLowerCase();
+    if (key === "f") {
+      evt.preventDefault();
+      requestViewerSearch();
+    } else if (key === "g") {
+      if (!state.lastSearchQuery) return;
+      evt.preventDefault();
+      repeatViewerSearch(!evt.shiftKey);
+    }
+  });
+}
+
+function requestViewerSearch() {
+  const initial = state.lastSearchQuery || "";
+  const term = window.prompt("Search within the page:", initial);
+  if (!term) return;
+  state.lastSearchQuery = term;
+  sendViewerSearch(term, true);
+}
+
+function repeatViewerSearch(forward = true) {
+  if (!state.lastSearchQuery) return;
+  sendViewerSearch(state.lastSearchQuery, forward);
+}
+
+function sendViewerSearch(query, forward = true) {
+  if (!query || !isPyWebViewBridgeReady()) return;
+  const api = window.pywebview?.api;
+  if (!api || typeof api.search_page !== "function") return;
+  try {
+    const result = api.search_page(query, forward);
+    if (result && typeof result.catch === "function") {
+      result.catch((err) => console.debug("search_page failed", err));
+    }
+  } catch (err) {
+    console.debug("search_page failed", err);
   }
 }
 

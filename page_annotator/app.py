@@ -17,19 +17,33 @@ DEFAULT_USER_AGENT = "PageAnnotator/1.0"
 
 
 class AppState:
-    def __init__(self, config_path: Path | str):
+    def __init__(self, config_path: Path | str, overrides: Dict[str, Any] | None = None):
         self.config_path = Path(config_path)
-        self.config = AppConfig.load(self.config_path)
+        self.overrides = overrides or {}
+        self._load()
+
+    def _load(self) -> None:
+        config = AppConfig.load(self.config_path)
+        self._apply_overrides(config)
+        self.config = config
         self.data_store = AnnotationDataStore(self.config)
+
+    def _apply_overrides(self, config: AppConfig) -> None:
+        viewer_overrides = self.overrides.get("viewer")
+        if not viewer_overrides:
+            return
+        if "detached_window" in viewer_overrides:
+            config.viewer.detached_window = bool(viewer_overrides["detached_window"])
+        if "prefer_proxy" in viewer_overrides:
+            config.viewer.prefer_proxy = bool(viewer_overrides["prefer_proxy"])
 
     def refresh(self) -> None:
         """Reload configuration and data from disk."""
-        self.config = AppConfig.load(self.config_path)
-        self.data_store = AnnotationDataStore(self.config)
+        self._load()
 
 
-def create_app(config_path: Path | str = "config.yaml") -> Flask:
-    state = AppState(config_path)
+def create_app(config_path: Path | str = "config.yaml", overrides: Dict[str, Any] | None = None) -> Flask:
+    state = AppState(config_path, overrides=overrides)
     base_dir = Path(__file__).parent
     app = Flask(
         __name__,
@@ -115,6 +129,16 @@ def create_app(config_path: Path | str = "config.yaml") -> Flask:
         proxied = Response(resp.content, status=resp.status_code)
         proxied.headers["Content-Type"] = resp.headers.get("Content-Type", "application/octet-stream")
         return proxied
+
+    @app.route("/pdf-viewer")
+    def pdf_viewer():
+        target = request.args.get("url", "").strip()
+        if not target:
+            return Response("Missing 'url' parameter", status=400)
+        if not _is_allowed_url(target):
+            return Response("Unsupported URL scheme", status=400)
+        proxied = f"/api/proxy/resource?url={quote(target, safe='')}"
+        return render_template("pdf_viewer.html", pdf_src=proxied, original_url=target)
 
     @app.route("/api/frame-check/<int:entry_id>")
     def frame_check(entry_id: int):
