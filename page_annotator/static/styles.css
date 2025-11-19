@@ -116,6 +116,19 @@ body {
   gap: 0.45rem;
 }
 
+.viewer-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-right: 0.5rem;
+}
+
+.viewer-controls .small {
+  padding: 0.2rem 0.6rem;
+  font-size: 0.8rem;
+  line-height: 1.2;
+}
+
 #panel-content {
   display: flex;
   gap: 1rem;
@@ -357,6 +370,30 @@ body.resizing {
   background: #2563eb;
   color: #fff;
   padding: 0.45rem 1.2rem;
+}
+
+body.pywebview-mode {
+  background: var(--panel-bg);
+}
+
+body.pywebview-mode #viewer-container {
+  display: none;
+}
+
+body.pywebview-mode #annotation-panel {
+  position: relative;
+  height: auto;
+  min-height: 100vh;
+  box-shadow: none;
+  border-top: none;
+}
+
+body.pywebview-mode #panel-resizer {
+  display: none !important;
+}
+
+body.pywebview-mode #panel-content {
+  overflow-y: auto;
 }
 
 @media (max-width: 900px) {

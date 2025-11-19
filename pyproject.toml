@@ -13,11 +13,13 @@ dependencies = [
   "Flask==3.0.2",
   "PyYAML==6.0.1",
   "requests==2.31.0",
-  "beautifulsoup4==4.12.3"
+  "beautifulsoup4==4.12.3",
+  "pywebview==6.1"
 ]
 
 [project.scripts]
 page-annotator = "page_annotator.cli:main"
+page-annotator-pywebview = "page_annotator.pywebview_cli:main"
 
 [tool.setuptools.packages.find]
 include = ["page_annotator"]

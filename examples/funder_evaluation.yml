@@ -2,7 +2,7 @@
 
 data_file: ../data/funder_evaluation.csv
 annotation_output: ../data/funder_evaluation_annotations.csv
-annotator_column: evaluator
+annotator_column: Coder
 
 viewer:
   url_column: DOI
@@ -32,15 +32,15 @@ display_fields:
     separator: "||"
 
 annotation_fields:
-  - name: total_funders
+  - name: Number of Funders Indicated by Paper
     label: Total Funders
     type: number
     required: true
-  - name: correct_matches
+  - name: Number of Correct Matches
     label: Correct Matches
     type: number
     required: true
-  - name: wrong_matches
+  - name: Number of Wrong Matches
     label: Wrong Matches
     type: number
     required: true
