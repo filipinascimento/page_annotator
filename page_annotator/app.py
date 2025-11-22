@@ -68,6 +68,12 @@ def create_app(config_path: Path | str = "config.yaml", overrides: Dict[str, Any
     @app.route("/api/annotation/<int:entry_id>", methods=["GET", "POST"])
     def annotation(entry_id: int):
         if request.method == "GET":
+            try:
+                state.data_store.get_entry(entry_id)
+            except KeyError:
+                return jsonify({"error": "Invalid entry id"}), 404
+            if not state.data_store.is_entry_visible(entry_id):
+                return jsonify({"error": "Unknown entry"}), 404
             annotation_values = state.data_store.annotations.get(entry_id, {})
             annotator_value = state.data_store.annotators.get(entry_id, "")
             return jsonify({"values": annotation_values, "annotator": annotator_value})
@@ -92,6 +98,8 @@ def create_app(config_path: Path | str = "config.yaml", overrides: Dict[str, Any
         try:
             entry = state.data_store.get_entry(entry_id)
         except KeyError:
+            return Response("Unknown entry", status=404)
+        if not state.data_store.is_entry_visible(entry_id):
             return Response("Unknown entry", status=404)
         target_url = entry["url"]
         upstream_headers = _build_upstream_headers()
@@ -145,6 +153,8 @@ def create_app(config_path: Path | str = "config.yaml", overrides: Dict[str, Any
         try:
             entry = state.data_store.get_entry(entry_id)
         except KeyError:
+            return jsonify({"error": "Unknown entry"}), 404
+        if not state.data_store.is_entry_visible(entry_id):
             return jsonify({"error": "Unknown entry"}), 404
         target_url = entry["url"]
         try:

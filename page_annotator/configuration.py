@@ -146,6 +146,7 @@ class AppConfig:
     data_file: Path
     annotation_output: Path
     annotator_column: Optional[str]
+    annotator_filter: Optional[List[str]]
     viewer: ViewerConfig
     display_fields: List[DisplayFieldConfig]
     annotation_fields: List[AnnotationFieldConfig]
@@ -190,12 +191,31 @@ class AppConfig:
             annotator_column = str(annotator_column).strip()
             if not annotator_column:
                 annotator_column = None
+        annotator_filter_raw = raw.get("annotator_filter")
+        annotator_filter: Optional[List[str]] = None
+        if annotator_filter_raw is not None:
+            if isinstance(annotator_filter_raw, str):
+                filter_values = [annotator_filter_raw]
+            elif isinstance(annotator_filter_raw, list):
+                filter_values = annotator_filter_raw
+            else:
+                raise ValueError("annotator_filter must be a string or list of strings.")
+            normalized: List[str] = []
+            for value in filter_values:
+                text = str(value).strip()
+                if text:
+                    normalized.append(text)
+            if normalized:
+                if not annotator_column:
+                    raise ValueError("annotator_filter requires annotator_column to be set.")
+                annotator_filter = normalized
 
         return cls(
             root_dir=root_dir,
             data_file=data_path,
             annotation_output=annotation_output_path,
             annotator_column=annotator_column,
+            annotator_filter=annotator_filter,
             viewer=viewer_cfg,
             display_fields=display_fields,
             annotation_fields=annotation_fields,
@@ -213,6 +233,7 @@ class AppConfig:
             "panel": self.panel.to_dict(),
             "autosave": self.autosave.to_dict(),
             "annotatorColumn": self.annotator_column,
+            "annotatorFilter": self.annotator_filter,
         }
 
     def annotation_field_names(self) -> List[str]:
