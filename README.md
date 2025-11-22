@@ -7,10 +7,12 @@ A lightweight Python/Flask application that helps annotate a list of web pages t
 - YAML configuration controls which metadata columns are shown and which annotation fields are collected (text, textarea, select, checkbox, list, etc.).
 - Displays each target page inside the viewer with previous/next navigation and persistent annotations.
 - Supports fields that should be rendered as lists (using your preferred separator) for both context and inputs.
+- Treats annotation fields that already exist in the source CSV as pre-filled answers so you can resume or seed datasets without running a prior session.
 - Detects when pages block `iframe` embedding by inspecting response headers / iframe behavior and automatically falls back to a proxied copy (clearly labeled) that reuses the reviewer’s browser User-Agent so upstream sites serve the same experience; proxied HTML is rewritten with absolute asset links so CSS/images/scripts load correctly.
 - Saves annotations (together with the source row) into the file defined in the config so you can resume work at any time.
 - Bottom annotation bar can start at your preferred height and, if enabled, can be resized by dragging the divider.
 - Remembers the annotator's name (prompted on first load), records it in the output CSV, and auto-saves progress so each reviewer can resume right where they left off.
+- Optional `annotator_filter` config hides rows that are reserved for other reviewers so each annotator only sees their assignments.
 
 ## Project layout
 ```
@@ -44,6 +46,8 @@ Edit `config.yaml` (or point the app to a different file) to describe your datas
 data_file: data/sample_documents.csv
 annotation_output: data/sample_annotations.csv
 annotator_column: annotator
+# annotator_filter:
+#   - Alice   # Uncomment to limit the UI to entries reserved for the listed annotators
 
 viewer:
   url_column: url
@@ -92,6 +96,21 @@ panel:
 Supported annotation field types: `text`, `textarea`, `number`, `select`, `multiselect`, `checkbox`, and `list`. Display fields accept `text`, `textarea`, `list`, and the richer `link_list` (renders clickable links) and `scroll_list` (shows horizontally scrollable pills—used by the funder evaluation example to inspect `display_names`).
 
 If you run into pages that refuse to render inside an iframe even after enabling the proxy, set `viewer.detached_window: true`. The viewer area will display a message while the actual page opens in a separate browser window that follows you as you navigate entries.
+
+### Pre-populating annotations
+If your CSV already contains one or more of the annotation fields defined in the config, those values are now treated as saved answers. When the app loads a row, it seeds the form with whatever was present in the CSV so you can ship pre-reviewed values or resume a previous workflow without copying over a separate annotation export. Any subsequent edits will still be merged into the configured `annotation_output` file.
+
+### Restricting entries to specific annotators
+Provide `annotator_column` together with an `annotator_filter` list to hide rows that belong to other reviewers. Each YAML config can target a different reviewer by listing their name(s):
+
+```yaml
+annotator_column: Coder
+annotator_filter:
+  - "Alice"
+  - "Bob"
+```
+
+Only rows whose `Coder` field contains one of the listed names (case-insensitive, supports comma/semicolon/pipe separation) will show up in `/api/state`, `/api/annotation/*`, and related endpoints. The server still keeps track of every row internally, so other reviewers’ work remains intact in the output CSV.
 
 ## Running the app
 1. (Recommended) create a virtual environment and install dependencies:
