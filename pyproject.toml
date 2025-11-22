@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "page-annotator"
-version = "0.1.0"
+version = "0.1.1"
 description = "Interactive web-based page annotation tool"
 readme = "README.md"
 authors = [{name = "Page Annotator", email = "contact@example.com"}]
